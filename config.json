@@ -13,7 +13,7 @@
     "single_chat_prefix": ["bot", "@bot"],
     "single_chat_reply_prefix": "[bot] ",
     "group_chat_prefix": ["@bot"],
-    "group_name_white_list": ["机器人群"],
+    "group_name_white_list": ["ALL_GROUP"],
     "image_create_prefix": ["画", "看", "找一张"],
     "wechat": {
     }
