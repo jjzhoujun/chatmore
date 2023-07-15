@@ -20,7 +20,7 @@ from common.sensitive_word import SensitiveWord
 import io
 
 from apscheduler.schedulers.blocking import BlockingScheduler
-
+import threading
 
 thread_pool = ThreadPoolExecutor(max_workers=8)
 sw = SensitiveWord()
@@ -48,9 +48,14 @@ class WechatChannel(Channel):
 
     def after_login(self):
         print('===>>>login success')
-        sched.add_job(self.send_positive_msg, 'cron', hour=19, minute=0, second=0)
+        # 每天7点10分进行推送
+        sched.add_job(self.send_positive_msg, 'cron', hour=7, minute=10, second=0)
+        # 每分钟进行推送
         # sched.add_job(self.send_positive_msg, 'cron', minute='*')
-        sched.start()
+        # 避免线程阻塞，采用多线程启动
+        # sched.start()
+        scheduler_thread = threading.Thread(target=sched.start)
+        scheduler_thread.start()
 
     def after_logout(self):
         sched.shutdown()
