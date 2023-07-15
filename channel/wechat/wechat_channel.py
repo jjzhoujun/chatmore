@@ -3,7 +3,7 @@
 """
 wechat channel
 """
-
+import random
 import time
 import itchat
 import json
@@ -19,9 +19,15 @@ from common.sensitive_word import SensitiveWord
 
 import io
 
+from apscheduler.schedulers.blocking import BlockingScheduler
+
 
 thread_pool = ThreadPoolExecutor(max_workers=8)
 sw = SensitiveWord()
+
+# 加入定时器
+sched = BlockingScheduler()
+
 
 @itchat.msg_register(TEXT)
 def handler_single_msg(msg):
@@ -36,19 +42,56 @@ def handler_group_msg(msg):
 
 
 class WechatChannel(Channel):
+
     def __init__(self):
         pass
+
+    def after_login(self):
+        print('===>>>login success')
+        sched.add_job(self.send_positive_msg, 'cron', hour=19, minute=0, second=0)
+        # sched.add_job(self.send_positive_msg, 'cron', minute='*')
+        sched.start()
+
+    def after_logout(self):
+        sched.shutdown()
 
     def startup(self):
         # login by scan QRCode
         hot_reload = channel_conf_val(const.WECHAT, 'hot_reload', True)
         if channel_conf_val(const.WECHAT, 'receive_qrcode_api'):
-            itchat.auto_login(enableCmdQR=2, hot_reload=hot_reload, qrCallback=self.login)
+            itchat.auto_login(enableCmdQR=2, hot_reload=hot_reload, qrCallback=self.login, loginCallback=self.after_login, exitCallback=self.after_logout)
         else:
-            itchat.auto_login(enableCmdQR=2, hotReload=hot_reload)
+            itchat.auto_login(enableCmdQR=2, hotReload=hot_reload, loginCallback=self.after_login, exitCallback=self.after_logout)
 
+        print('===>>>start schedule to send message and run')
         # start message listener
         itchat.run()
+
+
+    # 自定义每天发正能量消息
+    def send_positive_msg(self, userName=None):
+        # 获取根目录下的文件
+        cur_dir = os.getcwd()
+        print('===>>>cur_dir: ' + cur_dir)
+        with open(cur_dir + '/mingju.txt', 'r', encoding='utf-8') as f:
+            positive_msgs = f.readlines()
+
+        # positive_msgs = [
+        #     "今天也是元气满满的一天呢！",
+        #     "今天也要加油哦！",
+        #     "今天也要开开心心哦！"
+        # ]
+        message = random.choice(positive_msgs)
+        print('===>>>send positive message: ' + message)
+        # 发送给自己
+        user_info = itchat.search_friends(name='周大军')
+        if len(user_info) > 0:
+            userName = user_info[0]['UserName']
+        if userName:
+            itchat.send(message, toUserName=userName)
+        else:
+            itchat.send(message, toUserName='filehelper')
+
 
     def login(self, uuid=None, status='0', qrcode=None):
         print('uuid:', uuid)
